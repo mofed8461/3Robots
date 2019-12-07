@@ -5,13 +5,29 @@ const int servoPin2 = 3;
 const int motor1[4] = { 4, 5, 6, 7 };
 const int motor2[4] = { 8, 9, 10, 11 };
 
+const int LIFT_DOWN = 70;
+const int LIFT_UP = 140;
+const int HANDLE_OPEN = 90;
+const int HANDLE_CLOSE = 180;
+
+
+
 const int MOTOR_STATE_STOPPED = 0;
 const int MOTOR_STATE_FORWARD = 1;
 const int MOTOR_STATE_BACKWARD = -1;
 
+int rMotorState = MOTOR_STATE_STOPPED;
+int lMotorState = MOTOR_STATE_STOPPED;
 
-const int rMotorState = MOTOR_STATE_STOPPED;
-const int lMotorState = MOTOR_STATE_STOPPED;
+const String API_STEP_RIGHT = "r";
+const String API_STEP_LEFT = "l";
+const String API_MOVE = "m";
+const String API_STOP = "s";
+const String API_CATCH = "c";
+const String API_DROP = "d";
+const String API_CAN_CATCH_OBJECT = "o";
+
+
 
 void MotorStep(int ms)
 {
@@ -63,21 +79,19 @@ void MotorStep(int ms)
 }
 
 
+int xxxx = 0;
 
-//lift
-const int LIFT_DOWN = 70;
-const int LIFT_UP = 140;
+//Lift
 Servo Servo1;
 
+
 //catch
-const int HANDLE_OPEN = 90;
-const int HANDLE_CLOSE = 180;
 Servo Servo2;
 void setup() {
   Servo1.attach(servoPin1);
   Servo2.attach(servoPin2);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 //  pinMode(servoPin1, OUTPUT);
 //  pinMode(servoPin2, OUTPUT);
 
@@ -90,16 +104,93 @@ void setup() {
 
 void loop() 
 {
+  MotorStep(1);
+  
+  String msg = "z";
   char data;
   if (Serial.available())
   {
-    data = Serial.read();
-    Serial.println(data);
+    msg = "";
+    while (true)
+    {
+      data = Serial.read();
+      if (data == '\n')
+        break;
+      msg += data;
+    }
+    if (msg.startsWith("q"))
+    {
+      delay(5000);
+    }
+    if (msg.startsWith(API_STEP_RIGHT))
+    {
+      int oldrMotorState = rMotorState;
+      int oldlMotorState = lMotorState;
+
+
+      rMotorState = MOTOR_STATE_BACKWARD;
+      lMotorState = MOTOR_STATE_FORWARD;
+      MotorStep(250);
+
+      rMotorState = oldrMotorState;
+      lMotorState = oldlMotorState;
+      MotorStep(250);
+    }
+    else if (msg.startsWith(API_STEP_LEFT))
+    {
+      int oldrMotorState = rMotorState;
+      int oldlMotorState = lMotorState;
+
+
+      rMotorState = MOTOR_STATE_FORWARD;
+      lMotorState = MOTOR_STATE_BACKWARD;
+      MotorStep(250);
+
+      rMotorState = oldrMotorState;
+      lMotorState = oldlMotorState;
+      MotorStep(250);
+    }
+    else if (msg.startsWith(API_MOVE))
+    {
+      rMotorState = MOTOR_STATE_FORWARD;
+      lMotorState = MOTOR_STATE_FORWARD;
+      MotorStep(250);
+      rMotorState = MOTOR_STATE_STOPPED;
+      lMotorState = MOTOR_STATE_STOPPED;
+      MotorStep(1);
+    }
+    else if (msg.startsWith(API_STOP))
+    {
+      rMotorState = MOTOR_STATE_STOPPED;
+      lMotorState = MOTOR_STATE_STOPPED;
+      MotorStep(250);
+    }
+    else if (msg.startsWith(API_CATCH))
+    {
+      float xx = atof(msg.substring(API_CATCH.length()).c_str());
+      Servo1.write(LIFT_DOWN + (LIFT_UP - LIFT_DOWN) * xx); 
+      Servo2.write(HANDLE_CLOSE);
+    }
+    else if (msg.startsWith(API_DROP))
+    {
+      Servo2.write(HANDLE_OPEN);
+    }
+    else if (msg.startsWith(API_CAN_CATCH_OBJECT))
+    {
+      float xx = atof(msg.substring(API_CAN_CATCH_OBJECT.length()).c_str());
+      Servo1.write(LIFT_DOWN + (LIFT_UP - LIFT_DOWN) * xx); 
+      xxxx++;
+      if (xxxx > 10)
+      {
+        Serial.println("t");
+      }
+      else
+      {
+        Serial.println("f" + String(xxxx));
+      }
+    }
   }
-  
-  Servo1.write(LIFT_UP); 
-  Servo2.write(HANDLE_OPEN); 
-  delay(1000); 
+
   return;
   
   moveRight(true);
@@ -154,3 +245,5 @@ void moveLeft(bool forward)
   digitalWrite(motor1[0], !forward);
   digitalWrite(motor1[2], !forward);
 }
+
+
